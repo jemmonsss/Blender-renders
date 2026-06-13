@@ -1,0 +1,51 @@
+---
+layout: default
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blender Renders Gallery</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="nav-buttons">
+                <a href="https://github.com/jemmonsss" class="nav-btn" target="_blank">GitHub</a>
+            </div>
+            <!-- EDIT YOUR NAME HERE -->
+            <h1>Blender Renders</h1>
+            <!-- EDIT YOUR SUBTITLE/BIO HERE -->
+            <p class="subtitle">My 3D artwork and animations</p>
+        </header>
+
+        <!-- Search and Filter -->
+        <div class="search-filter-container">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="searchInput" class="filter-label">🔍 Search</label>
+                    <input type="text" id="searchInput" placeholder="Search renders..." onkeyup="filterRenders()">
+                </div>
+                <div class="filter-group">
+                    <label for="categoryFilter" class="filter-label">📂 Category</label>
+                    <select id="categoryFilter" onchange="filterRenders()">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="gallery">
+            <div class="loading">Loading renders...</div>
+        </div>
+
+        <footer>
+            <p>Created by Blender Artist</p>
+        </footer>
+    </div>
+
+    <script src="assets/js/gallery.js"></script>
+</body>
+</html>

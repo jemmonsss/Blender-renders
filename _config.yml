@@ -1,0 +1,38 @@
+# Jekyll Configuration for GitHub Pages
+title: Blender Renders Gallery
+description: Automated gallery for Blender renders
+baseurl: ""
+url: ""
+
+# Build settings
+markdown: kramdown
+theme: minima
+plugins:
+  - jekyll-feed
+
+# Exclude from processing
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
+# Collections
+collections:
+  renders:
+    output: false
+    permalink: /renders/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "renders"
+    values:
+      layout: "render"
