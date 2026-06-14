@@ -47,5 +47,12 @@
       "fontSize": "20px",
       "color": "#ffffff"
     }
+  },
+  "preloading": {
+    "enabled": true,
+    "showLoadingScreen": true,
+    "allowSkip": true,
+    "skipButtonText": "Skip Loading",
+    "loadingText": "Loading renders..."
   }
 }

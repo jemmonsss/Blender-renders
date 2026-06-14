@@ -24,6 +24,46 @@ async function loadConfig() {
             video: {
                 autoplayMuted: true,
                 showControls: true
+            },
+            lightbox: {
+                enabled: true,
+                modal: {
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    borderRadius: '12px',
+                    border: 'none',
+                    animation: 'fade',
+                    animationDuration: '0.3s'
+                },
+                closeButton: {
+                    enabled: true,
+                    position: 'top-right',
+                    size: '32px',
+                    color: '#ffffff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    hoverColor: '#c77dff'
+                },
+                video: {
+                    autoplay: true,
+                    loop: true,
+                    controls: true
+                },
+                watermark: {
+                    enabled: true,
+                    text: 'Your Name',
+                    opacity: 0.3,
+                    position: 'bottom-right',
+                    fontSize: '20px',
+                    color: '#ffffff'
+                }
+            },
+            preloading: {
+                enabled: true,
+                showLoadingScreen: true,
+                allowSkip: true,
+                skipButtonText: 'Skip Loading',
+                loadingText: 'Loading renders...'
             }
         };
     }
@@ -382,6 +422,112 @@ function collectCategoryNames(data, prefix = '') {
     return names;
 }
 
+// Collect all image/video URLs from data
+function collectAllUrls(data, parentPath = 'renders') {
+    const urls = [];
+    
+    for (const [key, value] of Object.entries(data)) {
+        if (key === '_files') {
+            value.forEach(file => {
+                urls.push(`${parentPath}/${file}`);
+            });
+        } else if (typeof value === 'object' && value !== null) {
+            urls.push(...collectAllUrls(value, `${parentPath}/${key}`));
+        }
+    }
+    
+    return urls;
+}
+
+// Preload images
+function preloadImages(urls) {
+    return new Promise((resolve) => {
+        let loaded = 0;
+        const total = urls.length;
+        
+        if (total === 0) {
+            resolve();
+            return;
+        }
+        
+        urls.forEach(url => {
+            const img = new Image();
+            img.onload = () => {
+                loaded++;
+                updateLoadingProgress(loaded, total);
+                if (loaded === total) resolve();
+            };
+            img.onerror = () => {
+                loaded++;
+                updateLoadingProgress(loaded, total);
+                if (loaded === total) resolve();
+            };
+            img.src = url;
+        });
+    });
+}
+
+// Show loading screen
+function showLoadingScreen() {
+    const preloadConfig = config.preloading;
+    
+    const loadingScreen = document.createElement('div');
+    loadingScreen.id = 'loadingScreen';
+    loadingScreen.className = 'loading-screen';
+    
+    const loadingContent = document.createElement('div');
+    loadingContent.className = 'loading-content';
+    
+    const loadingText = document.createElement('div');
+    loadingText.className = 'loading-text';
+    loadingText.textContent = preloadConfig.loadingText;
+    
+    const progressBar = document.createElement('div');
+    progressBar.className = 'progress-bar';
+    
+    const progressFill = document.createElement('div');
+    progressFill.className = 'progress-fill';
+    progressFill.id = 'progressFill';
+    progressFill.style.width = '0%';
+    
+    progressBar.appendChild(progressFill);
+    
+    loadingContent.appendChild(loadingText);
+    loadingContent.appendChild(progressBar);
+    
+    if (preloadConfig.allowSkip) {
+        const skipButton = document.createElement('button');
+        skipButton.className = 'skip-button';
+        skipButton.textContent = preloadConfig.skipButtonText;
+        skipButton.addEventListener('click', () => {
+            loadingScreen.remove();
+            window.skipPreloading = true;
+        });
+        loadingContent.appendChild(skipButton);
+    }
+    
+    loadingScreen.appendChild(loadingContent);
+    document.body.appendChild(loadingScreen);
+}
+
+// Update loading progress
+function updateLoadingProgress(loaded, total) {
+    const progressFill = document.getElementById('progressFill');
+    if (progressFill) {
+        const percentage = (loaded / total) * 100;
+        progressFill.style.width = `${percentage}%`;
+    }
+}
+
+// Hide loading screen
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => loadingScreen.remove(), 300);
+    }
+}
+
 // Main function to build the gallery
 async function buildGallery() {
     await loadConfig();
@@ -395,6 +541,27 @@ async function buildGallery() {
         const rendersData = await loadRendersFromData();
         
         if (Object.keys(rendersData).length > 0) {
+            // Preload images if enabled
+            const preloadConfig = config.preloading;
+            if (preloadConfig && preloadConfig.enabled) {
+                const urls = collectAllUrls(rendersData);
+                const imageUrls = urls.filter(url => url.match(/\.(jpg|jpeg|png)$/i));
+                
+                if (preloadConfig.showLoadingScreen && imageUrls.length > 0) {
+                    showLoadingScreen();
+                    window.skipPreloading = false;
+                    await preloadImages(imageUrls);
+                    if (!window.skipPreloading) {
+                        hideLoadingScreen();
+                    } else {
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        if (loadingScreen) loadingScreen.remove();
+                    }
+                } else {
+                    await preloadImages(imageUrls);
+                }
+            }
+            
             // Populate category filter dropdown with all categories and subcategories
             const allCategories = collectCategoryNames(rendersData);
             allCategories.forEach(category => {
