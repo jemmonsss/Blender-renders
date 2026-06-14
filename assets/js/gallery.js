@@ -118,70 +118,40 @@ function toggleCategory(element) {
     }
 }
 
-// Check if a file exists by attempting to fetch it
-async function fileExists(url) {
-    try {
-        const response = await fetch(url, { method: 'HEAD' });
-        return response.ok;
-    } catch (error) {
-        return false;
-    }
-}
-
-// Scan for files in a directory using common patterns
-async function scanDirectory(path, maxFiles = 100) {
-    const files = [];
-    const extensions = ['.jpg', '.jpeg', '.png', '.mp4'];
-    
-    // Try numbered patterns: render1.jpg, render2.jpg, etc.
-    for (let i = 1; i <= maxFiles; i++) {
-        for (const ext of extensions) {
-            const filename = `render${i}${ext}`;
-            const url = `${path}/${filename}`;
-            if (await fileExists(url)) {
-                files.push(filename);
-            }
-        }
-    }
-    
-    // Also try common naming patterns
-    const commonNames = ['scene', 'shot', 'frame', 'final', 'render', 'output'];
-    for (const name of commonNames) {
-        for (let i = 1; i <= 20; i++) {
-            for (const ext of extensions) {
-                const filename = `${name}${i}${ext}`;
-                const url = `${path}/${filename}`;
-                if (await fileExists(url)) {
-                    if (!files.includes(filename)) {
-                        files.push(filename);
-                    }
-                }
-            }
-        }
-    }
-    
-    return files;
-}
-
 // Recursively build category structure
-async function buildCategoryStructure(path, level = 0) {
+function buildCategoryStructure(data, parentPath = 'renders', level = 0) {
     const container = document.createElement('div');
     container.className = level > 0 ? 'subcategory' : 'category';
     
-    // Try to scan for files in this directory
-    const files = await scanDirectory(path);
-    
-    if (files.length > 0) {
-        const grid = document.createElement('div');
-        grid.className = 'gallery-grid';
-        
-        files.forEach(file => {
-            const type = file.endsWith('.mp4') ? 'video' : 'image';
-            const item = createRenderItem(`${path}/${file}`, type, file);
-            grid.appendChild(item);
-        });
-        
-        container.appendChild(grid);
+    for (const [key, value] of Object.entries(data)) {
+        if (key === '_files') {
+            // This is a list of files
+            const grid = document.createElement('div');
+            grid.className = 'gallery-grid';
+            
+            value.forEach(file => {
+                const type = file.endsWith('.mp4') ? 'video' : 'image';
+                const item = createRenderItem(`${parentPath}/${file}`, type, file);
+                grid.appendChild(item);
+            });
+            
+            container.appendChild(grid);
+        } else {
+            // This is a subcategory
+            const subcategorySection = document.createElement('div');
+            subcategorySection.className = level > 0 ? 'subcategory-section' : 'category-section';
+            
+            const title = document.createElement('h3');
+            title.className = level > 0 ? 'subcategory-title' : 'category-title';
+            title.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+            title.onclick = function() { toggleCategory(this); };
+            subcategorySection.appendChild(title);
+            
+            const subContent = buildCategoryStructure(value, `${parentPath}/${key}`, level + 1);
+            subcategorySection.appendChild(subContent);
+            
+            container.appendChild(subcategorySection);
+        }
     }
     
     return container;
@@ -233,66 +203,92 @@ function filterRenders() {
     }
 }
 
+// Load renders from data.json
+async function loadRendersFromData() {
+    try {
+        const response = await fetch('renders/data.json');
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error loading renders data:', error);
+        return {};
+    }
+}
+
+// Collect all category names (including subcategories)
+function collectCategoryNames(data, prefix = '') {
+    const names = [];
+    
+    for (const [key, value] of Object.entries(data)) {
+        if (key !== '_files') {
+            const fullName = prefix ? `${prefix}/${key}` : key;
+            names.push(fullName);
+            if (typeof value === 'object' && value !== null) {
+                names.push(...collectCategoryNames(value, fullName));
+            }
+        }
+    }
+    
+    return names;
+}
+
 // Main function to build the gallery
 async function buildGallery() {
     await loadConfig();
     
     const gallery = document.getElementById('gallery');
     const categoryFilter = document.getElementById('categoryFilter');
-    gallery.innerHTML = '<div class="loading">Scanning for renders...</div>';
+    gallery.innerHTML = '';
     
     try {
-        // Define categories to scan
-        const categories = ['characters', 'environments', 'objects', 'animations'];
-        let hasAnyRenders = false;
+        // Load from data.json
+        const rendersData = await loadRendersFromData();
         
-        // Populate category filter dropdown
-        categories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category;
-            option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
-            categoryFilter.appendChild(option);
-        });
-        
-        gallery.innerHTML = '';
-        
-        // Build gallery for each category
-        for (const category of categories) {
-            const categorySection = document.createElement('div');
-            categorySection.className = 'category';
-            categorySection.setAttribute('data-category', category);
+        if (Object.keys(rendersData).length > 0) {
+            // Populate category filter dropdown with all categories and subcategories
+            const allCategories = collectCategoryNames(rendersData);
+            allCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                // Format: "characters" or "characters/human"
+                const displayParts = category.split('/');
+                const displayText = displayParts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' / ');
+                option.textContent = displayText;
+                categoryFilter.appendChild(option);
+            });
             
-            const title = document.createElement('h2');
-            title.className = 'category-title';
-            title.textContent = category.charAt(0).toUpperCase() + category.slice(1);
-            title.onclick = function() { toggleCategory(this); };
-            categorySection.appendChild(title);
-            
-            const categoryContent = await buildCategoryStructure(`renders/${category}`, 1);
-            categorySection.appendChild(categoryContent);
-            
-            // Only add category if it has renders
-            if (categoryContent.querySelector('.render-item')) {
+            // Build gallery with nested structure
+            for (const [category, content] of Object.entries(rendersData)) {
+                const categorySection = document.createElement('div');
+                categorySection.className = 'category';
+                categorySection.setAttribute('data-category', category);
+                
+                const title = document.createElement('h2');
+                title.className = 'category-title';
+                title.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+                title.onclick = function() { toggleCategory(this); };
+                categorySection.appendChild(title);
+                
+                const categoryContent = buildCategoryStructure(content, `renders/${category}`, 1);
+                categorySection.appendChild(categoryContent);
+                
                 gallery.appendChild(categorySection);
-                hasAnyRenders = true;
             }
+            
+            // Add no results message
+            const noResults = document.createElement('div');
+            noResults.id = 'noResults';
+            noResults.className = 'no-results';
+            noResults.style.display = 'none';
+            noResults.textContent = 'No renders found. Try a different search or category.';
+            gallery.appendChild(noResults);
+            
+        } else {
+            gallery.innerHTML = '<div class="loading">No renders found. Add renders to the renders/ folder and GitHub Actions will auto-update data.json</div>';
         }
-        
-        // Add no results message
-        const noResults = document.createElement('div');
-        noResults.id = 'noResults';
-        noResults.className = 'no-results';
-        noResults.style.display = 'none';
-        noResults.textContent = 'No renders found. Try a different search or category.';
-        gallery.appendChild(noResults);
-        
-        if (!hasAnyRenders) {
-            gallery.innerHTML = '<div class="loading">No renders found. Add files to category folders with names like render1.jpg, render2.jpg, etc.</div>';
-        }
-        
     } catch (error) {
         console.error('Error building gallery:', error);
-        gallery.innerHTML = '<div class="loading">Error loading gallery.</div>';
+        gallery.innerHTML = '<div class="loading">Error loading gallery. Make sure renders/data.json exists.</div>';
     }
 }
 

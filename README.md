@@ -5,10 +5,10 @@ A fully automated GitHub Pages site for displaying Blender renders with watermar
 ## Features
 
 - **Auto-categorization**: Folders in `renders/` become categories automatically
-- **Zero scripts**: No Python scripts or data.json files needed - JavaScript auto-detects files
+- **Subcategories**: Support for nested folder structures (e.g., `characters/human/`, `characters/creature/`)
 - **Smart video autoplay**: Detects audio track, mutes/autoplays if silent, shows controls if audio
 - **Configurable watermark**: Name/text set in config.json, adjustable opacity/position
-- **Zero maintenance**: Just add files to folders and push to GitHub
+- **Zero maintenance**: Just add files to folders and push to GitHub - GitHub Actions auto-updates data.json
 - **Grid layout**: Clean, responsive grid matching modern design
 - **No metadata display**: Just the visual content
 
@@ -28,7 +28,7 @@ A fully automated GitHub Pages site for displaying Blender renders with watermar
 
 2. **Add your renders**
    - Create folders in `renders/` for each category (e.g., `characters/`, `environments/`)
-   - Name your files using common patterns: `render1.jpg`, `render2.jpg`, `scene1.mp4`, etc.
+   - Create subfolders for subcategories (e.g., `characters/human/`, `characters/creature/`)
    - Add your JPEG/PNG images and MP4 videos to these folders
 
 3. **Push to GitHub**
@@ -44,19 +44,7 @@ A fully automated GitHub Pages site for displaying Blender renders with watermar
    - Source: GitHub Actions
    - The workflow will automatically build and deploy
 
-**That's it!** No scripts needed - JavaScript automatically detects your files.
-
-## File Naming
-
-The gallery automatically detects files with these naming patterns:
-- `render1.jpg`, `render2.jpg`, `render3.jpg`, etc.
-- `scene1.jpg`, `scene2.jpg`, etc.
-- `shot1.mp4`, `shot2.mp4`, etc.
-- `frame1.png`, `frame2.png`, etc.
-- `final1.jpg`, `final2.jpg`, etc.
-- `output1.mp4`, `output2.mp4`, etc.
-
-Supported extensions: `.jpg`, `.jpeg`, `.png`, `.mp4`
+**That's it!** GitHub Actions will automatically scan your renders folder, update data.json, and deploy your site.
 
 ## Folder Structure
 
@@ -69,27 +57,42 @@ Supported extensions: `.jpg`, `.jpeg`, `.png`, `.mp4`
 │   ├── css/
 │   │   └── style.css    # Grid layout, watermark styles
 │   └── js/
-│       └── gallery.js   # Gallery logic (auto-detects files)
+│       └── gallery.js   # Gallery logic
 ├── renders/             # Add your renders here
+│   ├── data.json        # Auto-updated by GitHub Actions
 │   ├── characters/      # Category folder
-│   │   ├── render1.jpg
-│   │   ├── render2.jpg
-│   │   └── animation1.mp4
+│   │   ├── human/       # Subcategory
+│   │   │   ├── render1.jpg
+│   │   │   └── animation1.mp4
+│   │   └── creature/    # Another subcategory
+│   │       └── render2.jpg
 │   └── environments/    # Another category
-│       ├── scene1.jpg
-│       └── scene2.jpg
+│       └── scene1.jpg
 └── .github/
     └── workflows/
-        └── build.yml    # Auto-build on push
+        └── build.yml    # Auto-rebuild and update data.json
 ```
 
 ## Adding New Renders
 
-1. Name your files using the patterns above (e.g., `render3.jpg`)
-2. Put files in the appropriate category folder in `renders/`
-3. Commit and push to GitHub
+1. Put files in the appropriate category/subcategory folder in `renders/`
+2. Commit and push to GitHub
+3. GitHub Actions will automatically:
+   - Scan the renders folder (including subdirectories)
+   - Update data.json with new files
+   - Build and deploy the site
 
-**No scripts, no data.json editing - just add files and push!**
+**No manual data.json editing required!**
+
+## Subcategories
+
+You can create nested folder structures for better organization:
+- `renders/characters/human/` - Human character renders
+- `renders/characters/creature/` - Creature renders
+- `renders/environments/indoor/` - Indoor environments
+- `renders/environments/outdoor/` - Outdoor environments
+
+The gallery will automatically detect and display these as collapsible subcategories with proper indentation.
 
 ## Watermark Options
 
