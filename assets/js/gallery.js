@@ -101,6 +101,13 @@ function createRenderItem(src, type, filename) {
     }
     
     item.appendChild(watermark);
+    
+    // Add click handler for lightbox
+    if (config.lightbox && config.lightbox.enabled) {
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', () => openLightbox(src, type));
+    }
+    
     return item;
 }
 
@@ -116,6 +123,149 @@ function toggleCategory(element) {
         categoryGrid.classList.add('collapsed');
         element.classList.add('collapsed');
     }
+}
+
+// Lightbox functionality
+let lightboxModal = null;
+let lightboxContent = null;
+
+function createLightboxModal() {
+    const modal = document.createElement('div');
+    modal.className = 'lightbox-modal';
+    modal.id = 'lightboxModal';
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'lightbox-overlay';
+    overlay.addEventListener('click', closeLightbox);
+    
+    const content = document.createElement('div');
+    content.className = 'lightbox-content';
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'lightbox-close';
+    closeButton.innerHTML = '×';
+    closeButton.addEventListener('click', closeLightbox);
+    
+    const mediaContainer = document.createElement('div');
+    mediaContainer.className = 'lightbox-media';
+    
+    content.appendChild(closeButton);
+    content.appendChild(mediaContainer);
+    modal.appendChild(overlay);
+    modal.appendChild(content);
+    
+    document.body.appendChild(modal);
+    
+    lightboxModal = modal;
+    lightboxContent = mediaContainer;
+    
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightboxModal) {
+            closeLightbox();
+        }
+    });
+}
+
+function openLightbox(src, type) {
+    if (!lightboxModal) {
+        createLightboxModal();
+    }
+    
+    lightboxContent.innerHTML = '';
+    
+    const lbConfig = config.lightbox;
+    const modalConfig = lbConfig.modal;
+    const closeConfig = lbConfig.closeButton;
+    const videoConfig = lbConfig.video;
+    const watermarkConfig = lbConfig.watermark;
+    
+    // Apply modal styles from config
+    lightboxModal.querySelector('.lightbox-content').style.maxWidth = modalConfig.maxWidth;
+    lightboxModal.querySelector('.lightbox-content').style.maxHeight = modalConfig.maxHeight;
+    lightboxModal.querySelector('.lightbox-overlay').style.backgroundColor = modalConfig.backgroundColor;
+    lightboxModal.querySelector('.lightbox-content').style.borderRadius = modalConfig.borderRadius;
+    lightboxModal.querySelector('.lightbox-content').style.border = modalConfig.border;
+    
+    // Apply close button styles
+    const closeButton = lightboxModal.querySelector('.lightbox-close');
+    if (closeConfig.enabled) {
+        closeButton.style.display = 'flex';
+        closeButton.style.width = closeConfig.size;
+        closeButton.style.height = closeConfig.size;
+        closeButton.style.color = closeConfig.color;
+        closeButton.style.backgroundColor = closeConfig.backgroundColor;
+        closeButton.style.fontSize = `calc(${closeConfig.size} * 0.8)`;
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.backgroundColor = closeConfig.hoverColor;
+        });
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.backgroundColor = closeConfig.backgroundColor;
+        });
+    } else {
+        closeButton.style.display = 'none';
+    }
+    
+    // Create media element
+    if (type === 'video') {
+        const video = document.createElement('video');
+        video.src = src;
+        video.loop = videoConfig.loop;
+        video.controls = videoConfig.controls;
+        video.autoplay = videoConfig.autoplay;
+        video.playsInline = true;
+        video.style.maxWidth = '100%';
+        video.style.maxHeight = '100%';
+        video.style.objectFit = 'contain';
+        lightboxContent.appendChild(video);
+        
+        if (videoConfig.autoplay) {
+            video.play().catch(e => console.log('Autoplay prevented:', e));
+        }
+    } else {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = 'Blender render';
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
+        lightboxContent.appendChild(img);
+    }
+    
+    // Add watermark to lightbox if enabled
+    if (watermarkConfig.enabled) {
+        const watermark = document.createElement('div');
+        watermark.className = `watermark lightbox-watermark ${watermarkConfig.position}`;
+        watermark.textContent = watermarkConfig.text;
+        watermark.style.opacity = watermarkConfig.opacity;
+        watermark.style.fontSize = watermarkConfig.fontSize;
+        watermark.style.color = watermarkConfig.color;
+        lightboxContent.appendChild(watermark);
+    }
+    
+    // Apply animation
+    lightboxModal.style.animation = `lightbox-${modalConfig.animation}In ${modalConfig.animationDuration} ease-out`;
+    lightboxModal.style.display = 'flex';
+}
+
+function closeLightbox() {
+    if (!lightboxModal) return;
+    
+    const lbConfig = config.lightbox;
+    const modalConfig = lbConfig.modal;
+    
+    lightboxModal.style.animation = `lightbox-${modalConfig.animation}Out ${modalConfig.animationDuration} ease-in`;
+    
+    setTimeout(() => {
+        lightboxModal.style.display = 'none';
+        lightboxContent.innerHTML = '';
+        
+        // Stop any playing videos
+        const video = lightboxContent.querySelector('video');
+        if (video) {
+            video.pause();
+        }
+    }, parseFloat(modalConfig.animationDuration) * 1000);
 }
 
 // Recursively build category structure
