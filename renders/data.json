@@ -1,6 +1,7 @@
 {
-  "characters": {},
-  "environments": {},
-  "objects": {},
-  "animations": {}
+  "environments": {
+    "_files": [
+      "render1.jpg"
+    ]
+  }
 }
